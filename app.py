@@ -3,22 +3,38 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from PIL import Image
+import time
 
-st.set_page_config(page_title="Radar de Demandas - Agronegócio", layout="wide")
+# ------------------ CONFIG ------------------
+
+st.set_page_config(page_title="Radar de Tendências - Agronegócio", layout="wide")
+
+st.markdown("<style>body { font-family: 'Segoe UI', sans-serif; }</style>", unsafe_allow_html=True)
+
+# ------------------ SIDEBAR ------------------
+
+st.sidebar.title("⚙️ Configurações do Radar")
+
+uploaded_file = st.sidebar.file_uploader("📂 Enviar planilha Excel (.xlsx)", type=["xlsx"])
+
+bg_image = st.sidebar.file_uploader("🖼️ Imagem de fundo (opcional)", type=["png", "jpg", "jpeg"])
+
+font = st.sidebar.selectbox("🔤 Escolher fonte", ["Segoe UI", "Arial", "Courier New", "Georgia", "Verdana"])
+
+speed = st.sidebar.slider("⏱️ Velocidade do ponteiro", 0.1, 2.0, 1.0, 0.1)
+
+# ------------------ MAIN ------------------
 
 st.title("📡 Radar de Tendências do Agronegócio (Estilo DHL)")
-st.markdown("Faça o upload de uma planilha Excel com os campos: **Demanda, Categoria, Ocorrencias, Maturidade, PrazoEstimado, NivelMaturidade**")
-
-uploaded_file = st.file_uploader("📂 Envie sua planilha (.xlsx)", type=["xlsx"])
 
 if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
 
-        # Validar colunas esperadas
-        colunas_esperadas = {"Demanda", "Categoria", "Ocorrencias", "Maturidade", "PrazoEstimado", "NivelMaturidade"}
-        if not colunas_esperadas.issubset(df.columns):
-            st.error("A planilha deve conter as colunas: " + ", ".join(colunas_esperadas))
+        required_columns = {"Demanda", "Categoria", "Ocorrencias", "Maturidade", "PrazoEstimado", "NivelMaturidade"}
+        if not required_columns.issubset(df.columns):
+            st.error("A planilha deve conter as colunas: " + ", ".join(required_columns))
         else:
             categorias = df["Categoria"].unique()
             n_setores = len(categorias)
@@ -37,15 +53,45 @@ if uploaded_file:
 
             fig = go.Figure()
 
+            # Anéis concêntricos
             for r in [25, 50, 75, 100]:
                 fig.add_shape(type="circle", x0=-r, y0=-r, x1=r, y1=r,
-                              xref="x", yref="y", line=dict(color="lightgray", dash="dot"))
+                              xref="x", yref="y",
+                              line=dict(color="lightgray", dash="dot"))
 
+            # Linhas de setor
             for ang in np.arange(0, 360, setor_angulo):
-                fig.add_shape(type="line", x0=0, y0=0,
-                              x1=100*np.cos(np.radians(ang)), y1=100*np.sin(np.radians(ang)),
+                fig.add_shape(type="line",
+                              x0=0, y0=0,
+                              x1=100*np.cos(np.radians(ang)),
+                              y1=100*np.sin(np.radians(ang)),
                               line=dict(color="lightgray", width=1))
 
+            # Background
+            if bg_image:
+                img = Image.open(bg_image)
+                fig.add_layout_image(
+                    dict(
+                        source=img,
+                        xref="x", yref="y",
+                        x=-100, y=100,
+                        sizex=200, sizey=200,
+                        xanchor="left", yanchor="top",
+                        layer="below",
+                        sizing="stretch"
+                    )
+                )
+
+            # Ponteiro animado (simulado com tempo)
+            t = time.time() * speed
+            ponteiro_angulo = (t * 30) % 360  # gira em velocidade constante
+            ponteiro_x = 90 * np.cos(np.radians(ponteiro_angulo))
+            ponteiro_y = 90 * np.sin(np.radians(ponteiro_angulo))
+            fig.add_shape(type="line",
+                          x0=0, y0=0, x1=ponteiro_x, y1=ponteiro_y,
+                          line=dict(color="red", width=3))
+
+            # Plotar demandas
             for cat in categorias:
                 sub = df[df["Categoria"] == cat]
                 fig.add_trace(go.Scatter(
@@ -68,16 +114,16 @@ if uploaded_file:
                 width=900,
                 height=900,
                 showlegend=True,
-                xaxis=dict(showgrid=False, zeroline=False, visible=False),
-                yaxis=dict(showgrid=False, zeroline=False, visible=False),
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
                 plot_bgcolor="white",
-                title="Radar de Tendências"
+                title="Radar de Tendências",
+                font=dict(family=font, size=14)
             )
 
             st.plotly_chart(fig, use_container_width=True)
 
     except Exception as e:
-        st.error(f"Erro ao processar a planilha: {e}")
+        st.error(f"Erro ao processar: {e}")
 else:
-    st.info("Aguardando envio da planilha...")
-
+    st.info("Envie uma planilha para começar...")
