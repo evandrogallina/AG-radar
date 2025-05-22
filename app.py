@@ -7,7 +7,6 @@ from PIL import Image
 import time
 
 st.set_page_config(page_title="Radar Agro Club Tecnológico", layout="wide")
-
 st.markdown("<style>body { font-family: 'Segoe UI', sans-serif; }</style>", unsafe_allow_html=True)
 
 st.title("🌾 Radar Agro Club Tecnológico")
@@ -26,13 +25,14 @@ if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
 
-        if not {"Categoria", "Demanda", "Aderência", "PrazoEstimado", "EstadoRegiao", "Aderencia_%", "NivelMaturidade"}.issubset(df.columns):
-            st.error("A planilha está com colunas faltando. Verifique se ela contém todas as colunas obrigatórias.")
+        required_cols = {"Categoria", "Demanda", "Aderência", "PrazoEstimado", "EstadoRegiao", "Aderencia_%", "NivelMaturidade"}
+        if not required_cols.issubset(df.columns):
+            st.error("A planilha deve conter as colunas: " + ", ".join(required_cols))
         else:
             # Filtros interativos
-            categoria_sel = st.sidebar.multiselect("🔎 Filtrar por Categoria", options=sorted(df["Categoria"].unique()), default=list(df["Categoria"].unique()))
-            demanda_sel = st.sidebar.multiselect("📌 Filtrar por Demanda", options=sorted(df["Demanda"].unique()), default=list(df["Demanda"].unique()))
-            regiao_sel = st.sidebar.multiselect("🗺️ Filtrar por Estado/Região", options=sorted(df["EstadoRegiao"].unique()), default=list(df["EstadoRegiao"].unique()))
+            categoria_sel = st.sidebar.multiselect("🔎 Categoria", sorted(df["Categoria"].unique()), default=list(df["Categoria"].unique()))
+            demanda_sel = st.sidebar.multiselect("📌 Demanda", sorted(df["Demanda"].unique()), default=list(df["Demanda"].unique()))
+            regiao_sel = st.sidebar.multiselect("🗺️ Estado/Região", sorted(df["EstadoRegiao"].unique()), default=list(df["EstadoRegiao"].unique()))
 
             df = df[
                 df["Categoria"].isin(categoria_sel) &
@@ -58,14 +58,14 @@ if uploaded_file:
             for r in [25, 50, 75, 100]:
                 fig.add_shape(type="circle", x0=-r, y0=-r, x1=r, y1=r,
                               xref="x", yref="y",
-                              line=dict(color="lightgray", dash="dot"))
+                              line=dict(color="#dddddd", dash="dot"))
 
             for ang in np.arange(0, 360, setor_angulo):
                 fig.add_shape(type="line",
                               x0=0, y0=0,
                               x1=100*np.cos(np.radians(ang)),
                               y1=100*np.sin(np.radians(ang)),
-                              line=dict(color="lightgray", width=1))
+                              line=dict(color="#eeeeee", width=1))
 
             if bg_image:
                 img = Image.open(bg_image)
@@ -81,6 +81,7 @@ if uploaded_file:
                     )
                 )
 
+            # Ponteiro giratório
             t = time.time() * speed
             ponteiro_angulo = (t * 30) % 360
             ponteiro_x = 90 * np.cos(np.radians(ponteiro_angulo))
@@ -94,7 +95,7 @@ if uploaded_file:
                 fig.add_trace(go.Scatter(
                     x=sub["x"], y=sub["y"],
                     mode="markers+text",
-                    marker=dict(size=16),
+                    marker=dict(size=16, color="rgba(0,123,255,0.7)", line=dict(color="white", width=1)),
                     name=cat,
                     text=sub["Demanda"],
                     textposition="top center",
@@ -112,12 +113,13 @@ if uploaded_file:
             fig.update_layout(
                 width=radar_size,
                 height=radar_size,
-                showlegend=True,
+                showlegend=False,
                 xaxis=dict(visible=False),
                 yaxis=dict(visible=False),
                 plot_bgcolor="white",
                 title="Radar Agro Club Tecnológico",
-                font=dict(family=font, color=font_color, size=14)
+                font=dict(family=font, color=font_color, size=14),
+                margin=dict(l=0, r=0, t=40, b=0)
             )
 
             st.plotly_chart(fig, use_container_width=True)
