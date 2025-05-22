@@ -132,7 +132,3 @@ if uploaded_file:
         st.error(f"Erro ao processar a planilha: {e}")
 else:
     st.info("Faça upload de uma planilha para começar.")
-    except Exception as e:
-        st.error(f"Erro ao processar a planilha: {e}")
-else:
-    st.info("Faça upload de uma planilha para começar.")
